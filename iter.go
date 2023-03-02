@@ -33,10 +33,10 @@ import "bytes"
 // LineIterator contains the state of the iterator.
 // Copying a LineIterator will produce a new iterator with the same state.
 type LineIterator struct {
-	data  []byte
-	start int
-	end   int
-	next  int
+	data    []byte
+	start   int
+	end     int
+	newline int
 }
 
 func MakeLineIteratorString(data string) LineIterator {
@@ -45,25 +45,72 @@ func MakeLineIteratorString(data string) LineIterator {
 
 func MakeLineIterator(data []byte) LineIterator {
 	return LineIterator{
-		data:  data,
-		start: -1,
-		end:   -1,
-		next:  0,
+		data:    data,
+		start:   -1,
+		end:     -1,
+		newline: -1,
+	}
+}
+
+func MakeLineIteratorEndString(data string) LineIterator {
+	return MakeLineIteratorEnd([]byte(data))
+}
+
+func MakeLineIteratorEnd(data []byte) LineIterator {
+	return LineIterator{
+		data:    data,
+		start:   len(data) + 1,
+		end:     len(data) + 1,
+		newline: len(data) + 1,
 	}
 }
 
 func (it *LineIterator) Next() bool {
-	if it.next > len(it.data) {
+	if it.newline > len(it.data) {
 		return false
 	}
-	it.start = it.next
+
+	it.start = it.newline + 1
+	if it.start > len(it.data) {
+		it.end = it.start
+		it.newline = it.start
+		return false
+	}
+
 	index := bytes.IndexByte(it.data[it.start:], '\n')
 	if index == -1 {
-		it.end = len(it.data)
+		it.newline = len(it.data)
 	} else {
-		it.end = it.start + index
+		it.newline = it.start + index
 	}
-	it.next = it.end + 1
+
+	it.end = it.newline
+	if it.end != 0 && it.data[it.end-1] == '\r' {
+		it.end--
+	}
+	return true
+}
+
+func (it *LineIterator) Previous() bool {
+	if it.start < 0 {
+		return false
+	}
+
+	it.newline = it.start - 1
+	if it.newline < 0 {
+		it.start = -1
+		it.end = -1
+		return false
+	}
+
+	index := bytes.LastIndexByte(it.data[:it.newline], '\n')
+	if index == -1 {
+		it.start = 0
+	} else {
+		it.start = index + 1
+	}
+
+	it.end = it.newline
 	if it.end != 0 && it.data[it.end-1] == '\r' {
 		it.end--
 	}
@@ -75,7 +122,7 @@ func (it *LineIterator) Offset() int {
 }
 
 func (it *LineIterator) NextOffset() int {
-	return it.next
+	return it.newline + 1
 }
 
 // Returns current line as byte slice.
