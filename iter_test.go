@@ -1,6 +1,7 @@
 package lineiter
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -347,4 +348,38 @@ func TestLineIteratorSeekEnd(t *testing.T) {
 	it.previous(true)
 	it.line("a")
 	it.previous(false)
+}
+
+func BenchmarkBytes(b *testing.B) {
+	var buffer bytes.Buffer
+	for i := 0; i < 1000; i++ {
+		buffer.WriteString("ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ\n")
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		it := MakeLineIterator(buffer.Bytes())
+		for it.Next() {
+			it.Bytes()
+		}
+	}
+}
+
+func BenchmarkText(b *testing.B) {
+	var buffer bytes.Buffer
+	for i := 0; i < 1000; i++ {
+		buffer.WriteString("ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ\n")
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		it := MakeLineIterator(buffer.Bytes())
+		for it.Next() {
+			it.Text()
+		}
+	}
 }
