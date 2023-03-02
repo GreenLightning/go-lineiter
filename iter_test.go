@@ -302,3 +302,49 @@ func TestLineIteratorLineSpecial(t *testing.T) {
 	it.next(false)
 	it.line("")
 }
+
+func TestLineIteratorMixed(t *testing.T) {
+	it := MakeLineIteratorTester(t, "a\nb\nc")
+
+	it.next(true)
+	it.line("a")
+	it.next(true)
+	it.line("b")
+	it.next(true)
+	it.line("c")
+	it.previous(true)
+	it.line("b")
+	it.previous(true)
+	it.line("a")
+	it.next(true)
+	it.line("b")
+	it.next(true)
+	it.line("c")
+	it.next(false)
+}
+
+func TestLineIteratorSeekStart(t *testing.T) {
+	it := MakeLineIteratorTesterEnd(t, "a\nb\nc")
+
+	it.it.SeekStart()
+	it.next(true)
+	it.line("a")
+	it.next(true)
+	it.line("b")
+	it.next(true)
+	it.line("c")
+	it.next(false)
+}
+
+func TestLineIteratorSeekEnd(t *testing.T) {
+	it := MakeLineIteratorTester(t, "a\nb\nc")
+
+	it.it.SeekEnd()
+	it.previous(true)
+	it.line("c")
+	it.previous(true)
+	it.line("b")
+	it.previous(true)
+	it.line("a")
+	it.previous(false)
+}

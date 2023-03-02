@@ -68,6 +68,20 @@ func MakeLineIteratorEnd(data []byte) LineIterator {
 	}
 }
 
+// Moves the iterator into the before-the-beginning state.
+func (it *LineIterator) SeekStart() {
+	it.start = -1
+	it.end = -1
+	it.newline = -1
+}
+
+// Moves the iterator into the past-the-end state.
+func (it *LineIterator) SeekEnd() {
+	it.start = len(it.data) + 1
+	it.end = len(it.data) + 1
+	it.newline = len(it.data) + 1
+}
+
 func (it *LineIterator) Next() bool {
 	if it.newline > len(it.data) {
 		return false
