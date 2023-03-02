@@ -25,6 +25,9 @@
 // In particular, the empty string contains one line and "a\n" contains two
 // lines ("a" and "").
 //
+// In the special states, the line data accessors return default values as makes
+// sense (e.g. Bytes() and Text() will return an empty slice or string).
+//
 // String functions are provided for convenience, but will obviously allocate.
 package lineiter
 
@@ -117,20 +120,50 @@ func (it *LineIterator) Previous() bool {
 	return true
 }
 
+// Offset of current line in underlying data slice.
+// Returns -1 in before-the-beginning state.
+// Returns FullLength()+1 in past-the-end state.
 func (it *LineIterator) Offset() int {
 	return it.start
 }
 
-func (it *LineIterator) NextOffset() int {
-	return it.newline + 1
-}
-
 // Returns current line as byte slice.
+// Returns empty slice if in special state.
 func (it *LineIterator) Bytes() []byte {
+	if it.start < 0 {
+		return []byte{}
+	}
 	return it.data[it.start:it.end]
 }
 
 // Returns current line as string.
+// Returns empty string if in special state.
 func (it *LineIterator) Text() string {
 	return string(it.Bytes())
+}
+
+// Returns length of current line.
+// Returns 0 if in special state.
+func (it *LineIterator) Length() int {
+	return it.end - it.start
+}
+
+// Returns true if iterator points to valid line and false if iterator is in special state.
+func (it *LineIterator) Valid() bool {
+	return it.start >= 0 && it.start <= len(it.data)
+}
+
+// Returns underlying data as byte slice.
+func (it *LineIterator) FullBytes() []byte {
+	return it.data
+}
+
+// Returns underlying data as string.
+func (it *LineIterator) FullText() string {
+	return string(it.data)
+}
+
+// Returns length of underlying data.
+func (it *LineIterator) FullLength() int {
+	return len(it.data)
 }

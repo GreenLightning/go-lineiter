@@ -57,10 +57,16 @@ func (tester *LineIteratorTester) line(expected string) {
 	}
 }
 
-func (tester *LineIteratorTester) expect(expected, actual int, name string) {
+func (tester *LineIteratorTester) valid(expected bool) {
+	actual := tester.it.Valid()
 	if actual != expected {
-		tester.t.Helper()
-		tester.t.Errorf("expected %s=%d, but found %d", name, expected, actual)
+		if expected {
+			tester.t.Helper()
+			tester.t.Fatal("expected valid, but Valid() returned false")
+		} else {
+			tester.t.Helper()
+			tester.t.Fatal("expected invalid, but Valid() returned true")
+		}
 	}
 }
 
@@ -266,4 +272,33 @@ func TestLineIteratorPreviousTrimCarriageReturnOnly(t *testing.T) {
 	it.previous(true)
 	it.line("")
 	it.previous(false)
+}
+
+func TestLineIteratorNextValid(t *testing.T) {
+	it := MakeLineIteratorTester(t, "a")
+
+	it.valid(false)
+	it.next(true)
+	it.valid(true)
+	it.next(false)
+	it.valid(false)
+}
+
+func TestLineIteratorPreviousValid(t *testing.T) {
+	it := MakeLineIteratorTesterEnd(t, "a")
+
+	it.valid(false)
+	it.previous(true)
+	it.valid(true)
+	it.previous(false)
+	it.valid(false)
+}
+
+func TestLineIteratorLineSpecial(t *testing.T) {
+	it := MakeLineIteratorTester(t, "a")
+
+	it.line("")
+	it.next(true)
+	it.next(false)
+	it.line("")
 }
