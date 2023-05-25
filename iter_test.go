@@ -71,6 +71,38 @@ func (tester *LineIteratorTester) valid(expected bool) {
 	}
 }
 
+func (tester *LineIteratorTester) relativeNumber(expected int) {
+	actual := tester.it.RelativeLineNumber()
+	if actual != expected {
+		tester.t.Helper()
+		tester.t.Errorf("expected relative line %d, but found relative line %d", expected, actual)
+	}
+}
+
+func (tester *LineIteratorTester) number(expected int) {
+	actual := tester.it.LineNumber()
+	if actual != expected {
+		tester.t.Helper()
+		tester.t.Errorf("expected line %d, but found line %d", expected, actual)
+	}
+}
+
+func (tester *LineIteratorTester) optionalCount(expected int) {
+	actual := tester.it.OptionalLineCount()
+	if actual != expected {
+		tester.t.Helper()
+		tester.t.Errorf("expected optional line count %d, but found optional line count %d", expected, actual)
+	}
+}
+
+func (tester *LineIteratorTester) count(expected int) {
+	actual := tester.it.LineCount()
+	if actual != expected {
+		tester.t.Helper()
+		tester.t.Errorf("expected line count %d, but found line count %d", expected, actual)
+	}
+}
+
 func TestLineIteratorNextEmpty(t *testing.T) {
 	it := MakeLineIteratorTester(t, "")
 
@@ -348,6 +380,115 @@ func TestLineIteratorSeekEnd(t *testing.T) {
 	it.previous(true)
 	it.line("a")
 	it.previous(false)
+}
+
+func TestLineIteratorRelativeLineNumber(t *testing.T) {
+	it := MakeLineIteratorTester(t, "a\nb\nc")
+
+	it.relativeNumber(0)
+	it.next(true)
+	it.relativeNumber(1)
+	it.next(true)
+	it.relativeNumber(2)
+	it.next(true)
+	it.relativeNumber(3)
+	it.next(false)
+	it.relativeNumber(0)
+
+	it.next(false)
+	it.relativeNumber(0)
+
+	it.previous(true)
+	it.previous(true)
+	it.relativeNumber(-2)
+	it.previous(true)
+	it.previous(false)
+	it.relativeNumber(0)
+}
+
+func TestLineIteratorRelativeLineNumberAtEnd(t *testing.T) {
+	it := MakeLineIteratorTesterEnd(t, "a\nb\nc")
+
+	it.relativeNumber(0)
+	it.previous(true)
+	it.relativeNumber(-1)
+	it.previous(true)
+	it.relativeNumber(-2)
+	it.next(true)
+	it.relativeNumber(-1)
+	it.next(false)
+	it.relativeNumber(0)
+}
+
+func TestLineIteratorRelativeLineNumberAndSeek(t *testing.T) {
+	it := MakeLineIteratorTester(t, "a\nb\nc")
+
+	it.next(true)
+	it.relativeNumber(1)
+	it.it.SeekEnd()
+	it.relativeNumber(0)
+	it.previous(true)
+	it.relativeNumber(-1)
+	it.it.SeekStart()
+	it.relativeNumber(0)
+	it.next(true)
+	it.relativeNumber(1)
+}
+
+func TestLineIteratorLineNumber(t *testing.T) {
+	it := MakeLineIteratorTesterEnd(t, "a\nb\nc")
+	it.number(4)
+	it.previous(true)
+	it.number(3)
+	it.previous(true)
+	it.number(2)
+	it.previous(true)
+	it.number(1)
+	it.previous(false)
+	it.number(0)
+
+	it.it.SeekStart()
+	it.next(true)
+	it.number(1)
+}
+
+func TestLineIteratorLineCount(t *testing.T) {
+	it := MakeLineIteratorTester(t, "a\nb\nc")
+	it.optionalCount(0)
+	it.count(3)
+	it.optionalCount(3)
+}
+
+func TestLineIteratorAutoLineCount(t *testing.T) {
+	it := MakeLineIteratorTester(t, "a\nb\nc")
+	it.next(true)
+	it.next(true)
+	it.next(true)
+	it.next(false)
+	it.optionalCount(3)
+}
+
+func TestLineIteratorNoAutoLineCount(t *testing.T) {
+	it := MakeLineIteratorTesterEnd(t, "a\nb\nc")
+	it.previous(true)
+	it.next(false)
+	it.optionalCount(0)
+}
+
+func TestLineIteratorAutoLineCountEnd(t *testing.T) {
+	it := MakeLineIteratorTesterEnd(t, "a\nb\nc")
+	it.previous(true)
+	it.previous(true)
+	it.previous(true)
+	it.previous(false)
+	it.optionalCount(3)
+}
+
+func TestLineIteratorNoAutoLineCountEnd(t *testing.T) {
+	it := MakeLineIteratorTester(t, "a\nb\nc")
+	it.next(true)
+	it.previous(false)
+	it.optionalCount(0)
 }
 
 func BenchmarkBytes(b *testing.B) {

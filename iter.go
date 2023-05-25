@@ -36,10 +36,14 @@ import "bytes"
 // LineIterator contains the state of the iterator.
 // Copying a LineIterator will produce a new iterator with the same state.
 type LineIterator struct {
-	data    []byte
+	data []byte
+
 	start   int
 	end     int
 	newline int
+
+	lineNumber int
+	lineCount  int
 }
 
 func MakeLineIteratorString(data string) LineIterator {
@@ -48,10 +52,11 @@ func MakeLineIteratorString(data string) LineIterator {
 
 func MakeLineIterator(data []byte) LineIterator {
 	return LineIterator{
-		data:    data,
-		start:   -1,
-		end:     -1,
-		newline: -1,
+		data:       data,
+		start:      -1,
+		end:        -1,
+		newline:    -1,
+		lineNumber: 0,
 	}
 }
 
@@ -61,10 +66,11 @@ func MakeLineIteratorEndString(data string) LineIterator {
 
 func MakeLineIteratorEnd(data []byte) LineIterator {
 	return LineIterator{
-		data:    data,
-		start:   len(data) + 1,
-		end:     len(data) + 1,
-		newline: len(data) + 1,
+		data:       data,
+		start:      len(data) + 1,
+		end:        len(data) + 1,
+		newline:    len(data) + 1,
+		lineNumber: -1,
 	}
 }
 
@@ -73,6 +79,7 @@ func (it *LineIterator) SeekStart() {
 	it.start = -1
 	it.end = -1
 	it.newline = -1
+	it.lineNumber = 0
 }
 
 // Moves the iterator into the past-the-end state.
@@ -80,6 +87,7 @@ func (it *LineIterator) SeekEnd() {
 	it.start = len(it.data) + 1
 	it.end = len(it.data) + 1
 	it.newline = len(it.data) + 1
+	it.lineNumber = -1
 }
 
 func (it *LineIterator) Next() bool {
@@ -91,6 +99,10 @@ func (it *LineIterator) Next() bool {
 	if it.start > len(it.data) {
 		it.end = it.start
 		it.newline = it.start
+		if it.lineNumber > 0 {
+			it.lineCount = it.lineNumber
+		}
+		it.lineNumber = -1
 		return false
 	}
 
@@ -105,6 +117,8 @@ func (it *LineIterator) Next() bool {
 	if it.end != 0 && it.data[it.end-1] == '\r' {
 		it.end--
 	}
+
+	it.lineNumber++
 	return true
 }
 
@@ -117,6 +131,10 @@ func (it *LineIterator) Previous() bool {
 	if it.newline < 0 {
 		it.start = -1
 		it.end = -1
+		if it.lineNumber < 0 {
+			it.lineCount = -(it.lineNumber + 1)
+		}
+		it.lineNumber = 0
 		return false
 	}
 
@@ -131,6 +149,8 @@ func (it *LineIterator) Previous() bool {
 	if it.end != 0 && it.data[it.end-1] == '\r' {
 		it.end--
 	}
+
+	it.lineNumber--
 	return true
 }
 
@@ -180,4 +200,44 @@ func (it *LineIterator) FullText() string {
 // Returns length of underlying data.
 func (it *LineIterator) FullLength() int {
 	return len(it.data)
+}
+
+// Returns line number relative to the last special state (beginning or end).
+// If relative to the beginning, the result is positive and the first line has line number 1.
+// If relative to the end, the result is negative and the last line has line number -1.
+// Returns 0 if in special state.
+func (it *LineIterator) RelativeLineNumber() int {
+	if it.lineNumber < 0 {
+		return it.lineNumber + 1
+	} else {
+		return it.lineNumber
+	}
+}
+
+// Returns absolute line number.
+// The first line has line number 1.
+// Returns 0 or LineCount()+1 if in special state.
+// May have to read the entire data slice to count the number of lines,
+// which can be expensive for large data sets.
+func (it *LineIterator) LineNumber() int {
+	if it.lineNumber < 0 {
+		return it.LineCount() + it.lineNumber + 2
+	}
+	return it.lineNumber
+}
+
+// Returns the total number of lines, if known, or 0, otherwise.
+func (it *LineIterator) OptionalLineCount() int {
+	return it.lineCount
+}
+
+// Returns the total number of lines.
+// May have to read the entire data slice to count the number of lines,
+// which can be expensive for large data sets.
+// The value is cached in the line iterator.
+func (it *LineIterator) LineCount() int {
+	if it.lineCount == 0 {
+		it.lineCount = bytes.Count(it.data, []byte{'\n'}) + 1
+	}
+	return it.lineCount
 }
